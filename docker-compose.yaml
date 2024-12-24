@@ -1,0 +1,78 @@
+version: "3"
+
+services:
+  app-frankenphp:
+    container_name: app-frankenphp
+    build:
+      context: ./
+      dockerfile: ./.docker/Dockerfile.local
+    ports:
+      - 80:80
+    volumes:
+      - ./html/:/app
+      - caddy_data:/data # Data untuk Caddy server (berkas konfigurasi dan sertifikat)
+      - caddy_config:/config # Konfigurasi Caddy
+    restart: always
+    networks:
+      - frankenphp
+      - redis-frankenphp
+      - database-frankenphp
+  mysql-server-frankenphp:
+    command:
+      - --sort_buffer_size=1073741824
+    container_name: mysql-server-frankenphp
+    image: "mysql:8.0"
+    environment:
+      MYSQL_ROOT_PASSWORD: password!
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password@
+    ports:
+      - "33063:3306"
+
+    volumes:
+      - mysql-data-frankenphp:/var/lib/mysql
+    networks:
+      - database-frankenphp
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: "0.50"
+        reservations:
+          cpus: "0.25"
+          memory: 500M
+    restart: always
+
+  redis-frankenphp:
+    container_name: redis-frankenphp
+    image: redis:latest
+    command: redis-server --appendonly yes --replica-read-only no --requirepass yourredispassword
+    volumes:
+      - redis-frankenphp:/data
+    ports:
+      - 6378:6379
+    networks:
+      - redis-frankenphp
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: always
+
+networks:
+  frankenphp:
+    name: frankenphp
+    driver: bridge
+  redis-frankenphp:
+    name: redis-frankenphp
+    driver: bridge
+
+  database-frankenphp:
+    name: database-frankenphp
+    driver: bridge
+
+volumes:
+  mysql-data-frankenphp:
+  redis-frankenphp:
+  caddy_data:
+  caddy_config:

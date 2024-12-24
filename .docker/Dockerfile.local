@@ -1,0 +1,42 @@
+FROM dunglas/frankenphp:php8.2-alpine
+# If you want to disable HTTPS, use this value instead:
+ENV SERVER_NAME=:80
+# Install necessary extensions for Laravel
+RUN apk add --no-cache libzip-dev zip unzip mysql-client \
+    && docker-php-ext-install pdo pdo_mysql zip \
+    && docker-php-ext-enable pdo pdo_mysql zip
+
+# Install intl extension dependencies
+RUN apk add --no-cache icu-dev \
+    && docker-php-ext-install intl
+
+RUN apk update && apk add \
+    zlib-dev \
+    libzip-dev && \
+    docker-php-ext-install zip
+
+
+# Install GD extension dependencies and GD extension
+RUN apk add --no-cache --virtual .phpize-deps $PHPIZE_DEPS 
+RUN apk add --update linux-headers \
+    libjpeg-turbo-dev \
+    libwebp-dev \
+    libpng-dev
+RUN docker-php-ext-configure gd --with-jpeg
+RUN docker-php-ext-install -j$(nproc) gd
+
+# Set up Laravel application
+WORKDIR /app
+
+# Copy project files
+# COPY . /app
+
+# Set permissions for storage and cache
+# RUN chmod -R 775 /app/storage /app/bootstrap/cache
+
+# Install Composer dependencies
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer 
+# && composer install --no-interaction --optimize-autoloader
+
+# Expose application to FrankenPHP
+EXPOSE 80
